@@ -75,7 +75,11 @@ def moveRobot(robot, dX, dY, dZ, dA, dB, dG, speed):
 # initialize pygame for joystick / kb input
 print("Loading pygame... may take a few seconds")
 pygame.init()
-
+background_colour = (0, 0, 0)
+screen = pygame.display.set_mode((300, 300))
+pygame.display.set_caption('Robot Control Input Window')
+screen.fill(background_colour)
+pygame.display.flip()
 
 # Joystick init
 joysticks = []
@@ -107,39 +111,59 @@ robot = init_robot_mock() if input("Use mock robot? (y/n)") == "y" else init_rob
 currentoffsets = [0, 0, 0, 0, 0, 0]
 cur_speed = DEFAULT_SPEED
 lastMoveTime = -1
+shift = False
 moving = False
 
 
-MOVING_STR = "Not moving. Press A to start moving. Press B to stop moving. Press X to save moves to file and exit. Adjust time between moves with the D-Pad."
+MOVING_STR = """
+[CONTROLLER] Press A to start moving. Press B to stop moving. Press X to save moves to file and exit. Adjust time between moves with the D-Pad. Use the joysticks and triggers to move.
+
+[KEYBOARD] Press space to start moving. Press escape to stop moving. Press backquote to save moves to file and exit. Adjust time between moves with the arrow keys. Use WASD + QE to move. Hold shift to change the axes being moved.
+"""
 print(MOVING_STR)
+
+keepPlaying = True
+def action_write_and_exit():
+    writeMovesToFile()
+    global keepPlaying
+    keepPlaying = False
+    robot.Disconnect()
+    robot.WaitDisconnected()
+    print("X")
+
+def action_start_moving():
+    global moving
+    moving = True
+    print("A")
+
+def action_stop_moving():
+    global moving
+    moving = False
+    print(MOVING_STR)
+
+
 while keepPlaying:
     for event in pygame.event.get():
+        shiftOffset = 0 if shift else 3
         # The 0 button is the 'a' button, 1 is the 'b' button, 2 is the 'x' button, 3 is the 'y' button
-        if "button" in str(event):
+        if event.type == pygame.JOYBUTTONUP:
             button_id = event.button
-            if button_id == 0 and event.type == pygame.JOYBUTTONDOWN:
-                joysticks[-1].rumble(1, 1, 10000)
-                moving = True
-                print("A")
-            elif button_id == 1 and event.type == pygame.JOYBUTTONDOWN:
-                moving = False
-                print(MOVING_STR)
-            elif button_id == 2 and event.type == pygame.JOYBUTTONDOWN:
-                writeMovesToFile()
-                keepPlaying = False
-                robot.Disconnect()
-                robot.WaitDisconnected()
-                print("X")
-            elif button_id == 3 and event.type == pygame.JOYBUTTONDOWN:
-                print("Y")
-            elif button_id == 4 and event.type == pygame.JOYBUTTONDOWN:
-                print("LB")
-            elif button_id == 5 and event.type == pygame.JOYBUTTONDOWN:
-                print("RB")
-            elif button_id == 6 and event.type == pygame.JOYBUTTONDOWN:
-                print("LJoy")
-            elif button_id == 7 and event.type == pygame.JOYBUTTONDOWN:
-                print("RJoy")
+            if button_id == 0:
+                action_start_moving()
+            elif button_id == 1:
+                action_stop_moving()
+            elif button_id == 2:
+                action_write_and_exit()
+            # elif button_id == 3 and event.type == pygame.JOYBUTTONDOWN:
+            #     print("Y")
+            # elif button_id == 4 and event.type == pygame.JOYBUTTONDOWN:
+            #     print("LB")
+            # elif button_id == 5 and event.type == pygame.JOYBUTTONDOWN:
+            #     print("RB")
+            # elif button_id == 6 and event.type == pygame.JOYBUTTONDOWN:
+            #     print("LJoy")
+            # elif button_id == 7 and event.type == pygame.JOYBUTTONDOWN:
+            #     print("RJoy")
         else:
             if event.type == pygame.JOYAXISMOTION:
                 if event.axis == 0:
@@ -171,6 +195,62 @@ while keepPlaying:
                     cur_speed -= 1
                 cur_speed = max(10,cur_speed)
                 print(f"Time between move is: {cur_speed * 10}ms")
+            elif event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_LSHIFT:
+                    shift = True
+                    print(f"SHIFT {shiftOffset}")
+                elif event.key == pygame.K_SPACE:
+                    action_start_moving()
+                elif event.key == pygame.K_ESCAPE:
+                    action_stop_moving()
+                elif event.key == pygame.K_BACKQUOTE:
+                    action_write_and_exit()
+                elif event.key == pygame.K_UP:
+                    cur_speed += 10
+                elif event.key == pygame.K_DOWN:
+                    cur_speed -= 10
+                elif event.key == pygame.K_LEFT:
+                    cur_speed += 1
+                elif event.key == pygame.K_RIGHT:
+                    cur_speed -= 1
+                elif event.key == pygame.K_w:
+                    currentoffsets[0 + shiftOffset] = DEFAULT_SENSITIVITY
+                elif event.key == pygame.K_s:
+                    currentoffsets[0 + shiftOffset] = -DEFAULT_SENSITIVITY
+                elif event.key == pygame.K_a:
+                    currentoffsets[1 + shiftOffset] = DEFAULT_SENSITIVITY
+                elif event.key == pygame.K_d:
+                    currentoffsets[1 + shiftOffset] = -DEFAULT_SENSITIVITY
+                elif event.key == pygame.K_q:
+                    currentoffsets[2 + shiftOffset] = DEFAULT_SENSITIVITY
+                elif event.key == pygame.K_e:
+                    currentoffsets[2 + shiftOffset] = -DEFAULT_SENSITIVITY
+                cur_speed = max(10,cur_speed)
+                print(f"Time between move is: {cur_speed * 10}ms")
+
+            elif event.type == pygame.KEYUP:
+                if event.key == pygame.K_LSHIFT:
+                    shift = False
+                    print(f"UNSHIFT {shiftOffset}")
+                elif event.key == pygame.K_w:
+                    currentoffsets[0] = 0
+                    currentoffsets[3] = 0
+                elif event.key == pygame.K_s:
+                    currentoffsets[0] = 0
+                    currentoffsets[3] = 0
+                elif event.key == pygame.K_a:
+                    currentoffsets[1] = 0
+                    currentoffsets[4] = 0
+                elif event.key == pygame.K_d:
+                    currentoffsets[1] = 0
+                    currentoffsets[4] = 0
+                elif event.key == pygame.K_q:
+                    currentoffsets[2] = 0
+                    currentoffsets[5] = 0
+                elif event.key == pygame.K_e:
+                    currentoffsets[2] = 0
+                    currentoffsets[5] = 0
+
     tmstmp = time.time_ns() # convert to milliseconds
     if (tmstmp / 1000 / 1000) % cur_speed == 0 and tmstmp / 1000 / 1000 != lastMoveTime and moving:
         print(currentoffsets)
