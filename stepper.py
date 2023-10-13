@@ -18,7 +18,11 @@ saved_moves = pd.DataFrame(columns=["x", "y", "z", "alpha", "beta", "gamma", "du
     Saves the position to the saved_moves dataframe
 """
 def savePos(x, y, z, alpha, beta, gamma, duration):
-    saved_moves.loc[-1] = [x, y, z, alpha, beta, gamma, duration]
+    global saved_moves
+    if duration == 0:
+        duration = DEFAULT_SPEED
+    yeh_move = pd.DataFrame([x, y, z, alpha, beta, gamma, duration], index=saved_moves.columns).transpose()
+    saved_moves = pd.concat([saved_moves, yeh_move], ignore_index=False)
     print(saved_moves.tail())
 
 """
