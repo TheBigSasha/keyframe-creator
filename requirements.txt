@@ -1,2 +1,4 @@
 pandas
 numpy
+pygame==2.5.2
+mecademicpy
